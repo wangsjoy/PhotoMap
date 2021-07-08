@@ -8,6 +8,7 @@
 
 #import "PhotoMapViewController.h"
 #import "LocationsViewController.h"
+#import "PhotoAnnotation.h"
 
 @interface PhotoMapViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate, LocationsViewControllerDelegate, MKMapViewDelegate>
 @property (weak, nonatomic) IBOutlet MKMapView *mapView;
@@ -29,16 +30,21 @@
 - (MKAnnotationView *)mapView:(MKMapView *)mapView viewForAnnotation:(id<MKAnnotation>)annotation {
      MKPinAnnotationView *annotationView = (MKPinAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:@"Pin"];
      if (annotationView == nil) {
-         annotationView = [[MKPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"Pin"];
-         annotationView.canShowCallout = true;
-         annotationView.leftCalloutAccessoryView = [[UIImageView alloc] initWithFrame:CGRectMake(0.0, 0.0, 50.0, 50.0)];
+     annotationView = [[MKPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:@"Pin"];
+     annotationView.canShowCallout = true;
+     annotationView.leftCalloutAccessoryView = [[UIImageView alloc] initWithFrame:CGRectMake(0.0, 0.0, 50.0, 50.0)];
+     annotationView.rightCalloutAccessoryView = [UIButton buttonWithType:UIButtonTypeDetailDisclosure];
      }
 
      UIImageView *imageView = (UIImageView*)annotationView.leftCalloutAccessoryView;
-     imageView.image = [UIImage imageNamed:@"camera-icon"];
+     // imageView.image = [UIImage imageNamed:@"camera-icon"]; // remove this line
+
+     // add these two lines below
+     PhotoAnnotation *photoAnnotationItem = annotation; // refer to this generic annotation as our more specific PhotoAnnotation
+     imageView.image = photoAnnotationItem.photo; // set the image into the callout imageview
 
      return annotationView;
- }
+}
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
@@ -91,15 +97,46 @@
     }
 }
 
+//- (void)locationsViewController:(LocationsViewController *)controller didPickLocationWithLatitude:(NSNumber *)latitude longitude:(NSNumber *)longitude {
+//
+//    CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(latitude.floatValue, longitude.floatValue);
+//
+//    MKPointAnnotation *annotation = [MKPointAnnotation new];
+//    annotation.coordinate = coordinate;
+//    annotation.title = @"Picture!";
+//    [self.mapView addAnnotation:annotation];
+//
+//}
+
 - (void)locationsViewController:(LocationsViewController *)controller didPickLocationWithLatitude:(NSNumber *)latitude longitude:(NSNumber *)longitude {
-    
+
+    // Add a pin to the map
     CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(latitude.floatValue, longitude.floatValue);
+
+    PhotoAnnotation *point = [[PhotoAnnotation alloc] init];
+    point.coordinate = coordinate;
+    point.photo = [self resizeImage:self.selectedImage withSize:CGSizeMake(50.0, 50.0)];
+    [self.mapView addAnnotation:point];
     
-    MKPointAnnotation *annotation = [MKPointAnnotation new];
-    annotation.coordinate = coordinate;
-    annotation.title = @"Picture!";
-    [self.mapView addAnnotation:annotation];
     
+    //Change map center
+    MKCoordinateRegion sfRegion = MKCoordinateRegionMake(CLLocationCoordinate2DMake(latitude.floatValue, longitude.floatValue), MKCoordinateSpanMake(0.1, 0.1));
+    [self.mapView setRegion:sfRegion animated:false];
+
+}
+
+- (UIImage *)resizeImage:(UIImage *)image withSize:(CGSize)size {
+    UIImageView *resizeImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, size.width, size.height)];
+
+    resizeImageView.contentMode = UIViewContentModeScaleAspectFill;
+    resizeImageView.image = image;
+
+    UIGraphicsBeginImageContext(size);
+    [resizeImageView.layer renderInContext:UIGraphicsGetCurrentContext()];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return newImage;
 }
 
 @end
